@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIIT Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #222;
+    --accent: #e8ff00;
+    --work: #e8ff00;
+    --rest: #ff6b00;
+    --text: #fff;
+    --muted: #555;
+    --input-bg: #181818;
+  }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    overflow: hidden;
+    transition: background 0.6s ease;
+  }
+
+  /* ===================== SETUP PAGE ===================== */
+  #setup-page {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+  }
+
+  #setup-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(232,255,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,255,0,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .setup-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  header { margin-bottom: 40px; }
+
+  .logo {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 5rem;
+    line-height: 0.9;
+    letter-spacing: 2px;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .tagline {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .section-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .presets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .preset-btn {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 12px 8px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+    transition: all 0.15s;
+    line-height: 1.4;
+  }
+
+  .preset-btn:hover { border-color: var(--accent); color: var(--text); }
+  .preset-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  .preset-name {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: inherit;
+    margin-bottom: 2px;
+  }
+
+  .inputs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .input-group label {
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .input-group input {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Bebas Neue', cursive;
+    font-size: 2.2rem;
+    padding: 12px 10px;
+    text-align: center;
+    outline: none;
+    -moz-appearance: textfield;
+    transition: border-color 0.15s;
+  }
+
+  .input-group input::-webkit-outer-spin-button,
+  .input-group input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .input-unit {
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  .work-field input:focus { border-color: var(--work); }
+  .rest-field input:focus { border-color: var(--rest); }
+  .rounds-field input:focus { border-color: #888; }
+
+  .summary {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .summary strong {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.1rem;
+    color: var(--text);
+    letter-spacing: 1px;
+  }
+
+  .start-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    color: #000;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 2.2rem;
+    letter-spacing: 4px;
+    padding: 20px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.1s;
+  }
+
+  .start-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.15);
+    transform: translateX(-100%) skewX(-15deg);
+    transition: transform 0.4s;
+  }
+
+  .start-btn:hover::after { transform: translateX(110%) skewX(-15deg); }
+  .start-btn:active { transform: scale(0.99); }
+
+  /* ===================== WORKOUT PAGE ===================== */
+  #workout-page {
+    display: none;
+    height: 100dvh;
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  #workout-page.active {
+    display: grid;
+  }
+
+  body.work-phase { background: #0a0a0a; }
+  body.rest-phase { background: #0e0900; }
+  body.done-phase { background: #050a00; }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .back-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .back-btn:hover { color: var(--text); }
+
+  .topbar-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.3rem;
+    letter-spacing: 3px;
+    color: var(--muted);
+  }
+
+  .fullscreen-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px;
+    transition: color 0.2s;
+  }
+  .fullscreen-btn:hover { color: var(--text); }
+
+  .round-dots {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 14px 24px 0;
+    justify-content: center;
+    max-height: 52px;
+    overflow: hidden;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.3s, transform 0.3s;
+    flex-shrink: 0;
+  }
+  .dot.done { background: var(--muted); }
+  .dot.current { background: var(--accent-color, var(--work)); transform: scale(1.4); }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 24px;
+  }
+
+  .phase-label {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.6rem;
+    letter-spacing: 8px;
+    color: var(--accent-color, var(--work));
+    margin-bottom: 8px;
+    transition: color 0.4s;
+    min-height: 2rem;
+  }
+
+  .ring-container {
+    position: relative;
+    width: min(280px, 70vw);
+    height: min(280px, 70vw);
+    margin: 0 auto;
+  }
+
+  .ring-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 6; }
+  .ring-fg {
+    fill: none;
+    stroke: var(--accent-color, var(--work));
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear, stroke 0.4s;
+  }
+
+  .ring-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .timer-display {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(4rem, 16vw, 6rem);
+    line-height: 1;
+    letter-spacing: 2px;
+    color: var(--text);
+    transition: color 0.15s;
+  }
+
+  .timer-display.urgent { color: var(--accent-color, var(--work)); }
+
+  .round-counter {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  footer {
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .ctrl-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .ctrl-btn:hover { border-color: #333; color: var(--text); }
+
+  .ctrl-btn.primary {
+    background: var(--accent-color, var(--work));
+    border-color: transparent;
+    color: #000;
+    font-weight: 500;
+  }
+
+  .ctrl-btn.primary:hover { filter: brightness(1.1); }
+
+  /* Completion overlay */
+  .done-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    gap: 16px;
+    animation: fadeIn 0.6s ease;
+  }
+
+  .done-overlay.show { display: flex; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+
+  .done-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 5rem;
+    line-height: 0.9;
+    letter-spacing: 4px;
+    color: var(--work);
+  }
+
+  .done-subtitle {
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .done-stats { display: flex; gap: 40px; margin-top: 20px; }
+
+  .done-stat { text-align: center; }
+
+  .done-stat-val {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 2.5rem;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .done-stat-label {
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .done-actions { display: flex; gap: 12px; margin-top: 20px; }
+
+  .done-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 14px 24px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .done-btn:hover { border-color: #444; }
+  .done-btn.primary { background: var(--work); color: #000; border-color: transparent; }
+
+  /* Page transition */
+  .page { transition: opacity 0.3s; }
+
+  /* Accent color by phase */
+  body.work-phase { --accent-color: #e8ff00; }
+  body.rest-phase { --accent-color: #ff6b00; }
+  body.done-phase { --accent-color: #e8ff00; }
+</style>
+</head>
+<body>
+
+<!-- ========== SETUP PAGE ========== -->
+<div id="setup-page">
+  <div class="setup-container">
+    <header>
+      <div class="logo">HII<span>T</span></div>
+      <p class="tagline">Interval Training Timer</p>
+    </header>
+
+    <span class="section-label">Presets</span>
+    <div class="presets">
+      <button class="preset-btn" data-work="20" data-rest="10" data-rounds="8" onclick="applyPreset(this)">
+        <span class="preset-name">Tabata</span>20s / 10s × 8
+      </button>
+      <button class="preset-btn" data-work="40" data-rest="20" data-rounds="10" onclick="applyPreset(this)">
+        <span class="preset-name">2:1 Ratio</span>40s / 20s × 10
+      </button>
+      <button class="preset-btn" data-work="60" data-rest="30" data-rounds="6" onclick="applyPreset(this)">
+        <span class="preset-name">Endurance</span>60s / 30s × 6
+      </button>
+    </div>
+
+    <span class="section-label">Custom</span>
+    <div class="inputs-grid">
+      <div class="input-group work-field">
+        <label>Work</label>
+        <input id="work" type="number" value="60" min="1" max="999" oninput="updateSummary(); clearPreset()">
+        <div class="input-unit">seconds</div>
+      </div>
+      <div class="input-group rest-field">
+        <label>Rest</label>
+        <input id="rest" type="number" value="20" min="0" max="999" oninput="updateSummary(); clearPreset()">
+        <div class="input-unit">seconds</div>
+      </div>
+      <div class="input-group rounds-field">
+        <label>Rounds</label>
+        <input id="rounds" type="number" value="10" min="1" max="99" oninput="updateSummary(); clearPreset()">
+        <div class="input-unit">rounds</div>
+      </div>
+    </div>
+
+    <div class="summary">
+      <span>Total workout</span>
+      <strong id="totalTime">—</strong>
+      <span id="totalRounds">— rounds</span>
+    </div>
+
+    <button class="start-btn" onclick="goToWorkout()">START →</button>
+  </div>
+</div>
+
+<!-- ========== WORKOUT PAGE ========== -->
+<div id="workout-page">
+  <div class="topbar">
+    <button class="back-btn" onclick="goToSetup()">← Setup</button>
+    <span class="topbar-title">HIIT</span>
+    <button class="fullscreen-btn" onclick="document.documentElement.requestFullscreen()" title="Fullscreen">⛶</button>
+  </div>
+
+  <div class="round-dots" id="roundDots"></div>
+
+  <main>
+    <div class="phase-label" id="phaseLabel">WORK</div>
+    <div class="ring-container">
+      <svg class="ring-svg" viewBox="0 0 100 100">
+        <circle class="ring-bg" cx="50" cy="50" r="44"/>
+        <circle class="ring-fg" id="ringFg" cx="50" cy="50" r="44"/>
+      </svg>
+      <div class="ring-inner">
+        <div class="timer-display" id="timerDisplay">00:00</div>
+        <div class="round-counter" id="roundCounter">Round 1 / 10</div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <button class="ctrl-btn" onclick="resetTimer()">Reset</button>
+    <button class="ctrl-btn primary" id="playPauseBtn" onclick="togglePlay()">Start</button>
+    <button class="ctrl-btn" onclick="skipPhase()">Skip →</button>
+  </footer>
+
+  <!-- Completion overlay -->
+  <div class="done-overlay" id="doneOverlay">
+    <div class="done-title">DONE</div>
+    <div class="done-subtitle">Workout complete</div>
+    <div class="done-stats">
+      <div class="done-stat">
+        <div class="done-stat-val" id="doneRounds">—</div>
+        <div class="done-stat-label">Rounds</div>
+      </div>
+      <div class="done-stat">
+        <div class="done-stat-val" id="doneTime">—</div>
+        <div class="done-stat-label">Total time</div>
+      </div>
+    </div>
+    <div class="done-actions">
+      <button class="done-btn" onclick="goToSetup()">← Setup</button>
+      <button class="done-btn primary" onclick="restartWorkout()">Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== SETUP LOGIC =====
+  function applyPreset(btn) {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('work').value = btn.dataset.work;
+    document.getElementById('rest').value = btn.dataset.rest;
+    document.getElementById('rounds').value = btn.dataset.rounds;
+    updateSummary();
+  }
+
+  function clearPreset() {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  }
+
+  function fmtDuration(totalSecs) {
+    const m = Math.floor(totalSecs / 60), s = totalSecs % 60;
+    if (m === 0) return `${s}s`;
+    if (s === 0) return `${m}m`;
+    return `${m}m ${s}s`;
+  }
+
+  function updateSummary() {
+    const w  = +document.getElementById('work').value || 0;
+    const r  = +document.getElementById('rest').value || 0;
+    const ro = +document.getElementById('rounds').value || 0;
+    document.getElementById('totalTime').textContent   = fmtDuration((w + r) * ro);
+    document.getElementById('totalRounds').textContent = `${ro} round${ro !== 1 ? 's' : ''}`;
+  }
+
+  function goToSetup() {
+    pauseTimer();
+    document.getElementById('setup-page').style.display = 'flex';
+    document.getElementById('workout-page').classList.remove('active');
+    document.body.className = '';
+    document.getElementById('doneOverlay').classList.remove('show');
+  }
+
+  function goToWorkout() {
+    const w  = +document.getElementById('work').value;
+    const r  = +document.getElementById('rest').value;
+    const ro = +document.getElementById('rounds').value;
+    if (!w || !ro) return;
+
+    // Init workout with these values
+    initWorkout(w, r, ro);
+
+    document.getElementById('setup-page').style.display = 'none';
+    document.getElementById('workout-page').classList.add('active');
+  }
+
+  // ===== WORKOUT LOGIC =====
+  const CIRC = 2 * Math.PI * 44;
+  const ringFg = document.getElementById('ringFg');
+  ringFg.style.strokeDasharray = CIRC;
+
+  let WORK = 60, REST = 20, ROUNDS = 10;
+  let interval = null, running = false;
+  let isWork = true, currentRound = 1, remaining = 60, total = 60;
+  let startTime = null;
+
+  function initWorkout(w, r, ro) {
+    WORK = w; REST = r; ROUNDS = ro;
+    resetTimer();
+    buildDots();
+  }
+
+  function buildDots() {
+    const el = document.getElementById('roundDots');
+    el.innerHTML = '';
+    for (let i = 0; i < ROUNDS; i++) {
+      const d = document.createElement('div');
+      d.className = 'dot';
+      d.id = `dot-${i+1}`;
+      el.appendChild(d);
+    }
+  }
+
+  function beep(freq, dur = 0.18) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      osc.connect(gain); gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+      osc.start(); osc.stop(ctx.currentTime + dur);
+    } catch(e) {}
+  }
+
+  function fmt(s) {
+    return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  function setPhase() {
+    document.body.className = isWork ? 'work-phase' : 'rest-phase';
+    document.getElementById('phaseLabel').textContent = isWork ? 'WORK' : 'REST';
+  }
+
+  function updateDots() {
+    for (let i = 1; i <= ROUNDS; i++) {
+      const d = document.getElementById(`dot-${i}`);
+      if (!d) continue;
+      d.className = 'dot' + (i < currentRound ? ' done' : i === currentRound ? ' current' : '');
+    }
+  }
+
+  function updateUI() {
+    document.getElementById('timerDisplay').textContent = fmt(remaining);
+    document.getElementById('roundCounter').textContent = `Round ${currentRound} / ${ROUNDS}`;
+    document.getElementById('timerDisplay').classList.toggle('urgent', remaining <= 3 && remaining > 0);
+    ringFg.style.strokeDashoffset = CIRC * (1 - remaining / total);
+    updateDots();
+  }
+
+  function tick() {
+    if (remaining <= 3 && remaining > 0) beep(1100);
+    remaining--;
+    if (remaining < 0) {
+      beep(600);
+      if (isWork) {
+        if (REST > 0) { isWork = false; remaining = REST; total = REST; setPhase(); }
+        else { nextRound(); }
+      } else { nextRound(); }
+    }
+    updateUI();
+  }
+
+  function nextRound() {
+    currentRound++;
+    if (currentRound > ROUNDS) { finish(); return; }
+    isWork = true; remaining = WORK; total = WORK;
+    setPhase();
+  }
+
+  function togglePlay() {
+    running ? pauseTimer() : startTimer();
+  }
+
+  function startTimer() {
+    if (running) return;
+    if (!startTime) startTime = Date.now();
+    running = true;
+    document.getElementById('playPauseBtn').textContent = 'Pause';
+    interval = setInterval(tick, 1000);
+  }
+
+  function pauseTimer() {
+    running = false;
+    clearInterval(interval); interval = null;
+    document.getElementById('playPauseBtn').textContent = 'Resume';
+  }
+
+  function resetTimer() {
+    pauseTimer();
+    isWork = true; currentRound = 1;
+    remaining = WORK; total = WORK;
+    startTime = null;
+    document.getElementById('playPauseBtn').textContent = 'Start';
+    document.body.className = 'work-phase';
+    document.getElementById('phaseLabel').textContent = 'WORK';
+    document.getElementById('doneOverlay').classList.remove('show');
+    updateUI();
+  }
+
+  function skipPhase() {
+    if (!running) startTimer();
+    remaining = 0;
+  }
+
+  function finish() {
+    pauseTimer();
+    document.body.className = 'done-phase';
+    document.getElementById('doneRounds').textContent = ROUNDS;
+    const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : (WORK + REST) * ROUNDS;
+    document.getElementById('doneTime').textContent = fmtDuration(elapsed);
+    document.getElementById('doneOverlay').classList.add('show');
+    beep(880); setTimeout(() => beep(1100), 200);
+  }
+
+  function restartWorkout() {
+    document.getElementById('doneOverlay').classList.remove('show');
+    resetTimer();
+  }
+
+  // Init setup summary
+  updateSummary();
+</script>
+</body>
+</html>
