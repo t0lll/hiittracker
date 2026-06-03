@@ -1,0 +1,33 @@
+source "https://rubygems.org"
+# Hello! This is where you manage which Jekyll version is used to run.
+# When you want to use a different version, change it below, save the
+# file and run `bundle install`. Run Jekyll with `bundle exec`, like so:
+#
+#     bundle exec jekyll serve
+#
+# This will help ensure the proper Jekyll version is running.
+# Happy Jekylling!
+# gem "jekyll", "~> 4.4.1"
+# This is the default theme for new Jekyll sites. You may change this to anything you like.
+gem "minima", "~> 2.5"
+# If you want to use GitHub Pages, remove the "gem "jekyll"" above and
+# uncomment the line below. To upgrade, run `bundle update github-pages`.
+gem "github-pages", "{"jekyll":"3.10.0","jekyll-sass-converter":"1.5.2","kramdown":"2.4.0","kramdown-parser-gfm":"1.1.0","jekyll-commonmark-ghpages":"0.5.1","liquid":"4.0.4","rouge":"3.30.0","github-pages-health-check":"1.18.2","jekyll-redirect-from":"0.16.0","jekyll-sitemap":"1.4.0","jekyll-feed":"0.17.0","jekyll-gist":"1.5.0","jekyll-paginate":"1.1.0","jekyll-coffeescript":"1.2.2","jekyll-seo-tag":"2.8.0","jekyll-github-metadata":"2.16.1","jekyll-avatar":"0.8.0","jekyll-remote-theme":"0.4.3","jekyll-include-cache":"0.2.1","jemoji":"0.13.0","jekyll-mentions":"1.6.0","jekyll-relative-links":"0.6.1","jekyll-optional-front-matter":"0.3.2","jekyll-readme-index":"0.3.0","jekyll-default-layout":"0.1.5","jekyll-titles-from-headings":"0.5.3","minima":"2.5.1","jekyll-swiss":"1.0.0","jekyll-theme-primer":"0.6.0","jekyll-theme-architect":"0.2.0","jekyll-theme-cayman":"0.2.0","jekyll-theme-dinky":"0.2.0","jekyll-theme-hacker":"0.2.0","jekyll-theme-leap-day":"0.2.0","jekyll-theme-merlot":"0.2.0","jekyll-theme-midnight":"0.2.0","jekyll-theme-minimal":"0.2.0","jekyll-theme-modernist":"0.2.0","jekyll-theme-slate":"0.2.0","jekyll-theme-tactile":"0.2.0","jekyll-theme-time-machine":"0.2.0","ruby":"3.3.4","github-pages":"232","html-pipeline":"2.14.3","sass":"3.7.4","safe_yaml":"1.0.5","nokogiri":"1.16.7"}", group: :jekyll_plugins
+# If you have any plugins, put them here!
+group :jekyll_plugins do
+  gem "jekyll-feed", "~> 0.12"
+end
+
+# Windows and JRuby does not include zoneinfo files, so bundle the tzinfo-data gem
+# and associated library.
+platforms :mingw, :x64_mingw, :mswin, :jruby do
+  gem "tzinfo", ">= 1", "< 3"
+  gem "tzinfo-data"
+end
+
+# Performance-booster for watching directories on Windows
+gem "wdm", "~> 0.1", :platforms => [:mingw, :x64_mingw, :mswin]
+
+# Lock `http_parser.rb` gem to `v0.6.x` on JRuby builds since newer versions of the gem
+# do not have a Java counterpart.
+gem "http_parser.rb", "~> 0.6.0", :platforms => [:jruby]
