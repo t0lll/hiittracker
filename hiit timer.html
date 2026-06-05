@@ -17,6 +17,7 @@
     --rest: #ff6b00;
     --rep: #00d4ff;
     --amrap: #b47cff;
+    --interval: #ff5078;
     --text: #fff;
     --muted: #555;
     --input-bg: #181818;
@@ -112,9 +113,10 @@
     flex-shrink: 0;
     font-weight: 500;
   }
-  .tag-timed { background: rgba(232,255,0,0.15); color: var(--work); }
-  .tag-rep   { background: rgba(0,212,255,0.15); color: var(--rep); }
-  .tag-amrap { background: rgba(180,124,255,0.15); color: var(--amrap); }
+  .tag-timed    { background: rgba(232,255,0,0.15); color: var(--work); }
+  .tag-rep      { background: rgba(0,212,255,0.15); color: var(--rep); }
+  .tag-amrap    { background: rgba(180,124,255,0.15); color: var(--amrap); }
+  .tag-interval { background: rgba(255,80,120,0.15); color: var(--interval); }
 
   .block-desc {
     flex: 1;
@@ -256,6 +258,27 @@
   }
   .add-ex-btn:hover { border-color: #444; color: var(--text); }
 
+  /* Interval modal sub-rows */
+  .interval-step-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .interval-step-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .interval-step-row input[type="number"] { width: 72px; flex-shrink: 0; }
+  .interval-step-row input[type="text"]   { flex: 1; }
+  .interval-step-row select               { width: 96px; flex-shrink: 0; }
+  .interval-step-row button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px 4px;
+    flex-shrink: 0;
+  }
+  .interval-step-row button:hover { color: #ff4444; }
+
   /* Summary + share */
   .workout-summary {
     background: var(--input-bg);
@@ -385,10 +408,11 @@
     left: 0; top: 0; bottom: 0;
     width: 3px;
   }
-  .review-block.type-timed::before { background: var(--work); }
-  .review-block.type-rest::before  { background: var(--rest); }
-  .review-block.type-rep::before   { background: var(--rep); }
-  .review-block.type-amrap::before { background: var(--amrap); }
+  .review-block.type-timed::before    { background: var(--work); }
+  .review-block.type-rest::before     { background: var(--rest); }
+  .review-block.type-rep::before      { background: var(--rep); }
+  .review-block.type-amrap::before    { background: var(--amrap); }
+  .review-block.type-interval::before { background: var(--interval); }
 
   .review-block-header {
     display: flex;
@@ -872,9 +896,12 @@
     <div class="block-list" id="blockList"></div>
     <div id="emptyState" class="empty-state">No blocks yet.<br>Add timed intervals, rep exercises, or AMRAP sets below.</div>
 
-    <div class="add-block-row">
+    <div class="add-block-row" style="grid-template-columns:1fr 1fr 1fr 1fr">
       <button class="add-type-btn" onclick="openModal('timed')">
-        <span class="btn-label" style="color:var(--work)">+ Timed</span>Run / rest interval
+        <span class="btn-label" style="color:var(--work)">+ Timed</span>Single interval
+      </button>
+      <button class="add-type-btn" onclick="openModal('interval')">
+        <span class="btn-label" style="color:var(--interval)">+ Interval</span>Repeating rounds
       </button>
       <button class="add-type-btn" onclick="openModal('rep')">
         <span class="btn-label" style="color:var(--rep)">+ Rep</span>Click when done
@@ -1084,22 +1111,62 @@
   </div>
 </div>
 
+<!-- Interval modal -->
+<div class="modal-overlay" id="intervalModal">
+  <div class="modal">
+    <div class="modal-title" style="color:var(--interval)">Interval Block</div>
+    <div class="field-row">
+      <label>Block Name</label>
+      <input type="text" id="intervalName" placeholder="e.g. Sprint Intervals, Tabata…">
+    </div>
+    <div class="field-row">
+      <label>Rounds</label>
+      <input type="number" id="intervalRounds" value="6" min="1">
+      <div class="field-hint">How many times to repeat the steps below</div>
+    </div>
+    <div class="field-row">
+      <label>Steps per round (secs · name · phase)</label>
+      <div class="interval-step-list" id="intervalSteps">
+        <div class="interval-step-row">
+          <input type="number" value="30" min="1" placeholder="secs">
+          <input type="text" value="Hard" placeholder="Name">
+          <select><option value="work">Work</option><option value="rest">Rest</option></select>
+          <button onclick="removeIntervalStep(this)">×</button>
+        </div>
+        <div class="interval-step-row">
+          <input type="number" value="30" min="1" placeholder="secs">
+          <input type="text" value="Recovery" placeholder="Name">
+          <select><option value="work">Work</option><option value="rest" selected>Rest</option></select>
+          <button onclick="removeIntervalStep(this)">×</button>
+        </div>
+      </div>
+      <button class="add-ex-btn" onclick="addIntervalStep()">+ Add step</button>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal('intervalModal')">Cancel</button>
+      <button class="modal-btn primary" onclick="addIntervalBlock()">Add Block</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // URL ENCODING / DECODING
 // Compact format: each block is a tiny array
-//   timed: ["t", name, durationSecs, "work"|"rest"]
-//   rep:   ["r", name, reps, timeLimitSecs]
-//   amrap: ["a", durationSecs, [[reps, name], ...]]
+//   timed:    ["t", name, durationSecs, "work"|"rest"]
+//   rep:      ["r", name, reps, timeLimitSecs]
+//   amrap:    ["a", durationSecs, [[reps, name], ...]]
+//   interval: ["i", name, rounds, [[durationSecs, name, "work"|"rest"], ...]]
 // Encode whole array as base64 of JSON (no compression needed
 // for typical workouts; keeps this dependency-free).
 // ============================================================
 
 function encodeWorkout(blocks) {
   const compact = blocks.map(b => {
-    if (b.type === 'timed') return ['t', b.name, b.duration, b.phase];
-    if (b.type === 'rep')   return ['r', b.name, b.reps, b.timeLimit || 0];
-    if (b.type === 'amrap') return ['a', b.duration, b.exercises.map(e => [e.reps, e.name])];
+    if (b.type === 'timed')    return ['t', b.name, b.duration, b.phase];
+    if (b.type === 'rep')      return ['r', b.name, b.reps, b.timeLimit || 0];
+    if (b.type === 'amrap')    return ['a', b.duration, b.exercises.map(e => [e.reps, e.name])];
+    if (b.type === 'interval') return ['i', b.name, b.rounds, b.steps.map(s => [s.duration, s.name, s.phase])];
   });
   try {
     return btoa(unescape(encodeURIComponent(JSON.stringify(compact))));
@@ -1110,9 +1177,10 @@ function decodeWorkout(str) {
   try {
     const compact = JSON.parse(decodeURIComponent(escape(atob(str))));
     return compact.map(b => {
-      if (b[0] === 't') return { type: 'timed', name: b[1], duration: b[2], phase: b[3] || 'work' };
-      if (b[0] === 'r') return { type: 'rep',   name: b[1], reps: b[2], timeLimit: b[3] || 0 };
-      if (b[0] === 'a') return { type: 'amrap', duration: b[1], exercises: b[2].map(e => ({ reps: e[0], name: e[1] })) };
+      if (b[0] === 't') return { type: 'timed',    name: b[1], duration: b[2], phase: b[3] || 'work' };
+      if (b[0] === 'r') return { type: 'rep',      name: b[1], reps: b[2], timeLimit: b[3] || 0 };
+      if (b[0] === 'a') return { type: 'amrap',    duration: b[1], exercises: b[2].map(e => ({ reps: e[0], name: e[1] })) };
+      if (b[0] === 'i') return { type: 'interval', name: b[1], rounds: b[2], steps: b[3].map(s => ({ duration: s[0], name: s[1], phase: s[2] || 'work' })) };
       return null;
     }).filter(Boolean);
   } catch(e) { return null; }
@@ -1132,9 +1200,10 @@ function showPage(id) {
 }
 
 function openModal(type) {
-  if (type === 'timed') document.getElementById('timedModal').classList.add('open');
-  if (type === 'rep')   document.getElementById('repModal').classList.add('open');
-  if (type === 'amrap') document.getElementById('amrapModal').classList.add('open');
+  if (type === 'timed')    document.getElementById('timedModal').classList.add('open');
+  if (type === 'rep')      document.getElementById('repModal').classList.add('open');
+  if (type === 'amrap')    document.getElementById('amrapModal').classList.add('open');
+  if (type === 'interval') document.getElementById('intervalModal').classList.add('open');
 }
 
 function closeModal(id) {
@@ -1185,6 +1254,40 @@ function addAmrapBlock() {
   renderSetup();
 }
 
+function addIntervalBlock() {
+  const name   = document.getElementById('intervalName').value.trim() || 'Interval';
+  const rounds = parseInt(document.getElementById('intervalRounds').value) || 1;
+  const rows   = document.querySelectorAll('#intervalSteps .interval-step-row');
+  const steps  = [];
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const duration = parseInt(inputs[0].value) || 30;
+    const stepName = inputs[1].value.trim() || 'Step';
+    const phase    = row.querySelector('select').value;
+    steps.push({ duration, name: stepName, phase });
+  });
+  if (!steps.length) return;
+  workout.push({ type: 'interval', name, rounds, steps });
+  closeModal('intervalModal');
+  renderSetup();
+}
+
+function addIntervalStep() {
+  const list = document.getElementById('intervalSteps');
+  const row  = document.createElement('div');
+  row.className = 'interval-step-row';
+  row.innerHTML = `<input type="number" value="30" min="1" placeholder="secs">
+    <input type="text" placeholder="Name">
+    <select><option value="work">Work</option><option value="rest">Rest</option></select>
+    <button onclick="removeIntervalStep(this)">×</button>`;
+  list.appendChild(row);
+}
+
+function removeIntervalStep(btn) {
+  const list = document.getElementById('intervalSteps');
+  if (list.children.length > 1) btn.closest('.interval-step-row').remove();
+}
+
 function addAmrapEx() {
   const container = document.getElementById('amrapExercises');
   const row = document.createElement('div');
@@ -1214,27 +1317,35 @@ function fmtDuration(s) {
 
 function totalWorkoutTime() {
   return workout.reduce((sum, b) => {
-    if (b.type === 'timed') return sum + b.duration;
-    if (b.type === 'rep')   return sum + (b.timeLimit || 60); // estimate 60s if no limit
-    if (b.type === 'amrap') return sum + b.duration;
+    if (b.type === 'timed')    return sum + b.duration;
+    if (b.type === 'rep')      return sum + (b.timeLimit || 60);
+    if (b.type === 'amrap')    return sum + b.duration;
+    if (b.type === 'interval') return sum + b.rounds * b.steps.reduce((s, step) => s + step.duration, 0);
     return sum;
   }, 0);
 }
 
 function blockDescription(b) {
-  if (b.type === 'timed') return `${fmtDuration(b.duration)} · ${b.phase}`;
-  if (b.type === 'rep')   return `${b.reps} reps${b.timeLimit ? ` · max ${fmtDuration(b.timeLimit)}` : ''}`;
+  if (b.type === 'timed')    return `${fmtDuration(b.duration)} · ${b.phase}`;
+  if (b.type === 'rep')      return `${b.reps} reps${b.timeLimit ? ` · max ${fmtDuration(b.timeLimit)}` : ''}`;
   if (b.type === 'amrap') {
     const list = b.exercises.map(e => `${e.reps} ${e.name}`).join(', ');
     return `${fmtDuration(b.duration)} · ${list}`;
+  }
+  if (b.type === 'interval') {
+    const stepDesc = b.steps.map(s => `${fmtDuration(s.duration)} ${s.name}`).join(' + ');
+    return `${stepDesc} × ${b.rounds}`;
   }
   return '';
 }
 
 function blockTag(b) {
-  if (b.type === 'timed') return b.phase === 'rest' ? '<span class="block-tag tag-timed" style="background:rgba(255,107,0,0.15);color:var(--rest)">REST</span>' : '<span class="block-tag tag-timed">TIMED</span>';
-  if (b.type === 'rep')   return '<span class="block-tag tag-rep">REP</span>';
-  if (b.type === 'amrap') return '<span class="block-tag tag-amrap">AMRAP</span>';
+  if (b.type === 'timed')    return b.phase === 'rest'
+    ? '<span class="block-tag tag-timed" style="background:rgba(255,107,0,0.15);color:var(--rest)">REST</span>'
+    : '<span class="block-tag tag-timed">TIMED</span>';
+  if (b.type === 'rep')      return '<span class="block-tag tag-rep">REP</span>';
+  if (b.type === 'amrap')    return '<span class="block-tag tag-amrap">AMRAP</span>';
+  if (b.type === 'interval') return '<span class="block-tag tag-interval">INTERVAL</span>';
   return '';
 }
 
@@ -1303,7 +1414,9 @@ function renderReview() {
   container.innerHTML = '';
   workout.forEach((b, i) => {
     const div = document.createElement('div');
-    const typeClass = b.type === 'timed' ? (b.phase === 'rest' ? 'type-rest' : 'type-timed') : `type-${b.type}`;
+    const typeClass = b.type === 'timed' ? (b.phase === 'rest' ? 'type-rest' : 'type-timed')
+                    : b.type === 'interval' ? 'type-interval'
+                    : `type-${b.type}`;
     div.className = `review-block ${typeClass}`;
 
     let name = b.name || (b.type === 'amrap' ? 'AMRAP Circuit' : '');
@@ -1319,6 +1432,10 @@ function renderReview() {
     } else if (b.type === 'amrap') {
       dur = fmtDuration(b.duration);
       detail = b.exercises.map(e => `${e.reps}× ${e.name}`).join(' → ') + ' (repeat)';
+    } else if (b.type === 'interval') {
+      const perRound = b.steps.reduce((s, step) => s + step.duration, 0);
+      dur = fmtDuration(perRound * b.rounds);
+      detail = b.steps.map(s => `${fmtDuration(s.duration)} ${s.name}`).join(' + ') + ` × ${b.rounds} rounds`;
     }
 
     div.innerHTML = `
@@ -1350,10 +1467,26 @@ const ringFg = document.getElementById('ringFg');
 ringFg.style.strokeDasharray = CIRC;
 
 function buildSteps() {
-  // Each step: { type, name, duration, phase } | { type:'rep', name, reps, timeLimit }
-  // | { type:'amrap', duration, exercises }
-  // For timed blocks this is 1:1. Rep and amrap also 1:1.
-  steps = workout.slice();
+  steps = [];
+  workout.forEach(b => {
+    if (b.type === 'timed' || b.type === 'rep' || b.type === 'amrap') {
+      steps.push(b);
+    } else if (b.type === 'interval') {
+      // Expand into (rounds × steps) flat timed steps, tagged with round info
+      for (let r = 0; r < b.rounds; r++) {
+        b.steps.forEach(s => {
+          steps.push({
+            type: 'timed',
+            name: s.name,
+            duration: s.duration,
+            phase: s.phase,
+            // cosmetic context shown in step counter
+            intervalLabel: `${b.name} · Round ${r + 1} / ${b.rounds}`
+          });
+        });
+      }
+    }
+  });
 }
 
 function goToWorkout() {
@@ -1416,7 +1549,7 @@ function loadTimedStep(step) {
   document.body.className = phase;
   document.getElementById('phaseLabel').textContent = step.phase === 'rest' ? 'REST' : 'WORK';
   document.getElementById('exerciseLabel').textContent = step.name;
-  document.getElementById('stepCounter').textContent = `Step ${stepIdx + 1} / ${steps.length}`;
+  document.getElementById('stepCounter').textContent = step.intervalLabel || `Step ${stepIdx + 1} / ${steps.length}`;
   updateTimerRing();
 }
 
