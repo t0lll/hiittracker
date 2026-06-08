@@ -1644,6 +1644,27 @@ function markAmrapExDone(idx) {
 }
 
 // ============================================================
+// WAKE LOCK — keep screen on during workout
+// ============================================================
+let wakeLock = null;
+
+async function acquireWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+  } catch(e) {}
+}
+
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+}
+
+// Re-acquire after tab becomes visible again (browser releases it on hide)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && running) acquireWakeLock();
+});
+
+// ============================================================
 // TIMER
 // ============================================================
 function fmt(s) {
@@ -1730,12 +1751,14 @@ function startTimer() {
   running = true;
   document.getElementById('playPauseBtn').textContent = 'Pause';
   interval = setInterval(tick, 1000);
+  acquireWakeLock();
 }
 
 function pauseTimer() {
   running = false;
   clearInterval(interval); interval = null;
   document.getElementById('playPauseBtn').textContent = 'Resume';
+  releaseWakeLock();
 }
 
 function skipStep() {
@@ -1753,6 +1776,7 @@ function resetWorkout() {
 
 function finish() {
   pauseTimer();
+  releaseWakeLock();
   document.body.className = 'done-phase';
   document.getElementById('doneBlocks').textContent = steps.length;
   const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : totalWorkoutTime();
@@ -1768,6 +1792,7 @@ function restartWorkout() {
 
 function goToSetup() {
   pauseTimer();
+  releaseWakeLock();
   document.body.className = '';
   showPage('setup-page');
 }
