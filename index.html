@@ -23,6 +23,10 @@
 </style>
 </head>
 <body>
-<iframe src="hiit%20timer.html" title="HIIT Timer"></iframe>
+<iframe id="app" src="hiit%20timer.html" title="HIIT Timer"></iframe>
+<script>
+  var qs = location.search;
+  if (qs) document.getElementById('app').src = 'hiit%20timer.html' + qs;
+</script>
 </body>
 </html>
