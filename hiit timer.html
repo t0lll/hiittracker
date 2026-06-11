@@ -882,6 +882,50 @@
     .add-block-row { grid-template-columns: 1fr; }
     .review-actions { flex-direction: column; }
   }
+
+  /* ==================== YOURFOLIO SECTION ==================== */
+  .folio-section { margin-bottom: 24px; }
+  .folio-token-row { display: flex; gap: 8px; }
+  .folio-token-input {
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 10px 12px;
+    outline: none;
+    min-width: 0;
+  }
+  .folio-token-input:focus { border-color: var(--accent); }
+  .folio-token-input::placeholder { color: var(--muted); }
+  .folio-panel { margin-top: 8px; display: none; }
+  .folio-panel.open { display: block; }
+  .folio-action-row { display: flex; gap: 8px; }
+  .folio-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    padding: 10px 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .folio-btn:hover { color: var(--text); }
+  .folio-status {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 6px;
+    min-height: 14px;
+  }
+  .folio-status.ok  { color: var(--accent); }
+  .folio-status.err { color: #ff4444; }
 </style>
 </head>
 <body>
@@ -920,6 +964,24 @@
     <div class="share-row">
       <div class="share-url-box" id="shareUrlBox">Build a workout above to get a shareable link</div>
       <button class="copy-btn" id="copyBtn" onclick="copyShareUrl()">Copy</button>
+    </div>
+
+    <div class="folio-section">
+      <span class="section-label">Cloud Save</span>
+      <div class="folio-token-row">
+        <input class="folio-token-input" id="folioTokenInput" type="text"
+          placeholder="Paste your yourfolio token…" autocomplete="off" spellcheck="false">
+        <button class="copy-btn" id="folioConnectBtn" onclick="connectFolio()">Connect</button>
+      </div>
+      <div class="folio-panel" id="folioPanel">
+        <div class="folio-action-row">
+          <button class="folio-btn" onclick="saveFolio()">Save</button>
+          <button class="folio-btn" onclick="loadFolio()">Load</button>
+          <div class="share-url-box" id="folioShareBox" style="flex:1;font-size:0.6rem">Save a workout to get a cloud link</div>
+          <button class="copy-btn" id="folioShareCopyBtn" onclick="copyFolioUrl()">Share</button>
+        </div>
+        <div class="folio-status" id="folioStatus"></div>
+      </div>
     </div>
 
     <button class="start-btn" id="setupStartBtn" onclick="goToReview()" disabled>REVIEW →</button>
@@ -1375,6 +1437,7 @@ function renderSetup() {
   btn.textContent = workout.length ? 'REVIEW →' : 'ADD BLOCKS TO START';
 
   updateShareUrl();
+  updateFolioShareUrl();
 }
 
 function updateShareUrl() {
@@ -1798,13 +1861,171 @@ function goToSetup() {
 }
 
 // ============================================================
+// YOURFOLIO CLOUD SAVE
+// Use case: hiittracker  |  REST: GET/PUT /f/{token}/hiittracker
+// Schema mirrors the app's block types directly (lossless round-trip).
+// Only difference: JS uses camelCase timeLimit; schema uses time_limit.
+// ============================================================
+const FOLIO_BASE = 'https://yourfolio.store/f';
+const FOLIO_USE_CASE = 'hiittracker';
+let folioToken = '';
+let folioShareLink = '';
+
+function connectFolio() {
+  const token = document.getElementById('folioTokenInput').value.trim();
+  if (!token) return;
+  folioToken = token;
+  localStorage.setItem('hiitFolioToken', token);
+  document.getElementById('folioPanel').classList.add('open');
+  document.getElementById('folioConnectBtn').textContent = 'Update';
+  setFolioStatus('Connected', 'ok');
+  updateFolioShareUrl();
+}
+
+function setFolioStatus(msg, cls) {
+  const el = document.getElementById('folioStatus');
+  el.textContent = msg;
+  el.className = 'folio-status' + (cls ? ` ${cls}` : '');
+}
+
+function updateFolioShareUrl() {
+  const box = document.getElementById('folioShareBox');
+  if (!folioToken || !workout.length) {
+    box.textContent = 'Save a workout to get a cloud link';
+    folioShareLink = '';
+    return;
+  }
+  folioShareLink = `${location.origin}${location.pathname}?folio=${folioToken}`;
+  box.textContent = folioShareLink;
+}
+
+function copyFolioUrl() {
+  if (!folioShareLink) return;
+  navigator.clipboard.writeText(folioShareLink).then(() => {
+    const btn = document.getElementById('folioShareCopyBtn');
+    const prev = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = prev; }, 2000);
+  });
+}
+
+function workoutToFolioJson(workoutName) {
+  return {
+    name: workoutName || undefined,
+    blocks: workout.map(b => {
+      if (b.type === 'rep') {
+        const block = { type: 'rep', name: b.name, reps: b.reps };
+        if (b.timeLimit) block.time_limit = b.timeLimit;
+        return block;
+      }
+      return Object.assign({}, b);
+    })
+  };
+}
+
+function folioJsonToWorkout(json) {
+  return (json.blocks || []).map(b => {
+    if (b.type === 'rep') return { type: 'rep', name: b.name, reps: b.reps, timeLimit: b.time_limit || 0 };
+    return Object.assign({}, b);
+  });
+}
+
+function buildFolioMarkdown() {
+  const lines = [`# HIIT Workout — ${new Date().toLocaleDateString('en-GB')}`, ''];
+  workout.forEach((b, i) => {
+    const label = b.name || (b.type === 'amrap' ? 'AMRAP Circuit' : b.type);
+    lines.push(`## ${i + 1}. ${label}`);
+    if (b.type === 'timed')    lines.push(`- ${b.phase}: ${b.duration}s`);
+    if (b.type === 'rep')      lines.push(`- ${b.reps} reps${b.timeLimit ? `, max ${b.timeLimit}s` : ''}`);
+    if (b.type === 'amrap') {
+      lines.push(`- ${b.duration}s circuit`);
+      b.exercises.forEach(e => lines.push(`  - ${e.reps}× ${e.name}`));
+    }
+    if (b.type === 'interval') {
+      lines.push(`- ${b.rounds} rounds`);
+      b.steps.forEach(s => lines.push(`  - ${s.duration}s ${s.name} (${s.phase})`));
+    }
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
+async function saveFolio() {
+  if (!folioToken) { setFolioStatus('Connect a token first', 'err'); return; }
+  if (!workout.length) { setFolioStatus('Add blocks first', 'err'); return; }
+  setFolioStatus('Saving…');
+  try {
+    const r = await fetch(`${FOLIO_BASE}/${folioToken}/${FOLIO_USE_CASE}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ markdown: buildFolioMarkdown(), json: workoutToFolioJson() })
+    });
+    if (r.ok) {
+      setFolioStatus('Saved ✓', 'ok');
+      updateFolioShareUrl();
+    } else {
+      const err = await r.json().catch(() => ({}));
+      setFolioStatus(`Save failed: ${(err.fixes || [err.error || r.status]).join('; ')}`, 'err');
+    }
+  } catch(e) {
+    setFolioStatus('Network error', 'err');
+  }
+}
+
+async function loadFolio(tokenOverride) {
+  const tok = tokenOverride || folioToken;
+  if (!tok) { setFolioStatus('No token', 'err'); return false; }
+  setFolioStatus('Loading…');
+  try {
+    const r = await fetch(`${FOLIO_BASE}/${tok}/${FOLIO_USE_CASE}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (r.status === 404) { setFolioStatus('Nothing saved yet', ''); return false; }
+    if (!r.ok) { setFolioStatus(`Load failed: ${r.status}`, 'err'); return false; }
+    const data = await r.json();
+    const loaded = folioJsonToWorkout(data.json);
+    if (!loaded.length) { setFolioStatus('Empty workout', ''); return false; }
+    workout = loaded;
+    renderSetup();
+    setFolioStatus(`Loaded ${loaded.length} block${loaded.length !== 1 ? 's' : ''} ✓`, 'ok');
+    updateFolioShareUrl();
+    return true;
+  } catch(e) {
+    setFolioStatus('Network error', 'err');
+    return false;
+  }
+}
+
+// ============================================================
 // BOOT: check URL for encoded workout
 // ============================================================
 function init() {
+  const savedToken = localStorage.getItem('hiitFolioToken');
+  if (savedToken) {
+    folioToken = savedToken;
+    document.getElementById('folioTokenInput').value = savedToken;
+    document.getElementById('folioPanel').classList.add('open');
+    document.getElementById('folioConnectBtn').textContent = 'Update';
+  }
+
   const params = new URLSearchParams(location.search);
-  const encoded = params.get('w');
-  if (encoded) {
-    const loaded = decodeWorkout(encoded);
+  const folioParam = params.get('folio');
+  const wParam = params.get('w');
+
+  if (folioParam) {
+    folioToken = folioParam;
+    localStorage.setItem('hiitFolioToken', folioParam);
+    document.getElementById('folioTokenInput').value = folioParam;
+    document.getElementById('folioPanel').classList.add('open');
+    document.getElementById('folioConnectBtn').textContent = 'Update';
+    renderSetup();
+    showPage('setup-page');
+    loadFolio(folioParam).then(loaded => { if (loaded) goToReview(); });
+    return;
+  }
+
+  if (wParam) {
+    const loaded = decodeWorkout(wParam);
     if (loaded && loaded.length) {
       workout = loaded;
       renderSetup();
@@ -1812,6 +2033,7 @@ function init() {
       return;
     }
   }
+
   renderSetup();
   showPage('setup-page');
 }
