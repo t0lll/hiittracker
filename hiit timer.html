@@ -1862,7 +1862,10 @@ function goToSetup() {
 
 // ============================================================
 // YOURFOLIO CLOUD SAVE
-// Use case: hiittracker  |  REST: GET/PUT /f/{token}/hiittracker
+// Use case: hiittracker  |  PUT /f/{token}/hiittracker (write both md+json),
+//                           GET /f/{token}/hiittracker/json (read json artifact).
+// The bare GET path content-negotiates to a rendered HTML page, so the load
+// path must request the explicit /json projection.
 // Schema mirrors the app's block types directly (lossless round-trip).
 // Only difference: JS uses camelCase timeLimit; schema uses time_limit.
 // ============================================================
@@ -1977,7 +1980,7 @@ async function loadFolio(tokenOverride) {
   if (!tok) { setFolioStatus('No token', 'err'); return false; }
   setFolioStatus('Loading…');
   try {
-    const r = await fetch(`${FOLIO_BASE}/${tok}/${FOLIO_USE_CASE}`, {
+    const r = await fetch(`${FOLIO_BASE}/${tok}/${FOLIO_USE_CASE}/json`, {
       headers: { 'Accept': 'application/json' }
     });
     if (r.status === 404) { setFolioStatus('Nothing saved yet', ''); return false; }
